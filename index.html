@@ -1,21 +1,560 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My First Jenkins CICD </title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snakes and Ladders</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            max-width: 95vw;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .board-wrapper {
+            position: relative;
+            width: 500px;
+            height: 500px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #f8f9fa;
+        }
+
+        #board-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .board-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
+        }
+
+        .cell {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 3px 5px;
+            font-size: 11px;
+            font-weight: bold;
+            color: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .player-tokens-container {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            display: flex;
+            gap: 2px;
+            flex-wrap: wrap;
+            max-width: 100%;
+            z-index: 3;
+        }
+
+        .token {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .token.p1 { background: radial-gradient(circle at 30% 30%, #ff4b4b, #a80000); }
+        .token.p2 { background: radial-gradient(circle at 30% 30%, #00d2ff, #005691); }
+
+        .controls-panel {
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #ffd700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .turn-indicator {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .dice-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin: 10px 0;
+        }
+
+        .dice {
+            width: 70px;
+            height: 70px;
+            background: white;
+            border-radius: 12px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            padding: 8px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .dice:active {
+            transform: scale(0.95);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            background-color: #333;
+            border-radius: 50%;
+            justify-self: center;
+            align-self: center;
+            visibility: hidden;
+        }
+
+        /* Dice dot patterns */
+        .dice[data-val="1"] .dot:nth-child(5) { visibility: visible; }
+        .dice[data-val="2"] .dot:nth-child(1), .dice[data-val="2"] .dot:nth-child(9) { visibility: visible; }
+        .dice[data-val="3"] .dot:nth-child(1), .dice[data-val="3"] .dot:nth-child(5), .dice[data-val="3"] .dot:nth-child(9) { visibility: visible; }
+        .dice[data-val="4"] .dot:nth-child(1), .dice[data-val="4"] .dot:nth-child(3), .dice[data-val="4"] .dot:nth-child(7), .dice[data-val="4"] .dot:nth-child(9) { visibility: visible; }
+        .dice[data-val="5"] .dot:nth-child(1), .dice[data-val="5"] .dot:nth-child(3), .dice[data-val="5"] .dot:nth-child(5), .dice[data-val="5"] .dot:nth-child(7), .dice[data-val="5"] .dot:nth-child(9) { visibility: visible; }
+        .dice[data-val="6"] .dot:nth-child(1), .dice[data-val="6"] .dot:nth-child(3), .dice[data-val="6"] .dot:nth-child(4), .dice[data-val="6"] .dot:nth-child(6), .dice[data-val="6"] .dot:nth-child(7), .dice[data-val="6"] .dot:nth-child(9) { visibility: visible; }
+
+        .btn {
+            background: #ffd700;
+            color: #333;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background: #ffea75;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            background: #888;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .game-log {
+            background: rgba(0,0,0,0.3);
+            height: 100px;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 12px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        @media (max-width: 850px) {
+            .board-wrapper {
+                width: 350px;
+                height: 350px;
+            }
+            .controls-panel {
+                width: 350px;
+            }
+        }
+    </style>
 </head>
 <body>
 
-    <h1>Welcome to My Jenkins</h1>
-    <p>This is a simple paragraph of text on my very first webpage.</p>
+<div class="game-container">
+    <h1>Snakes & Ladders</h1>
+    
+    <div class="main-content">
+        <div class="board-wrapper">
+            <canvas id="board-canvas" width="500" height="500"></canvas>
+            <div class="board-grid" id="board-grid"></div>
+        </div>
 
-    <h3>My Favourite Things</h3>
-    <ul>
-        <li>Coding</li>
-        <li>Reading</li>
-        <li>Music</li>
-    </ul>
+        <div class="controls-panel">
+            <div class="status-card">
+                <div class="turn-indicator" id="turn-display">Red Player's Turn</div>
+                <div id="msg-display">Roll the dice to start!</div>
+            </div>
 
-    <a href="https://google.com">Visit Google</a>
+            <div class="dice-area">
+                <div class="dice" id="dice" data-val="1">
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                </div>
+                <button class="btn" id="roll-btn">Roll Dice</button>
+            </div>
 
+            <button class="btn" id="reset-btn" style="background: #ff4b4b; color: white;">Reset Game</button>
+
+            <div class="game-log" id="game-log"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Game configuration & board map definition
+    const BOARD_SIZE = 10;
+    const TOTAL_SQUARES = 100;
+
+    // Define Snakes (head -> tail) and Ladders (bottom -> top)
+    const snakes = {
+        16: 6,
+        47: 26,
+        49: 11,
+        56: 53,
+        62: 19,
+        64: 60,
+        87: 24,
+        93: 73,
+        95: 75,
+        98: 78
+    };
+
+    const ladders = {
+        1: 38,
+        4: 14,
+        9: 31,
+        21: 42,
+        28: 84,
+        36: 44,
+        51: 67,
+        71: 91,
+        80: 100
+    };
+
+    const players = [
+        { id: 1, name: "Red", class: "p1", color: "#ff4b4b", pos: 0 },
+        { id: 2, name: "Blue", class: "p2", color: "#00d2ff", pos: 0 }
+    ];
+
+    let currentPlayerIdx = 0;
+    let isRolling = false;
+
+    // DOM Elements
+    const boardGrid = document.getElementById('board-grid');
+    const canvas = document.getElementById('board-canvas');
+    const ctx = canvas.getContext('2d');
+    const rollBtn = document.getElementById('roll-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const diceEl = document.getElementById('dice');
+    const turnDisplay = document.getElementById('turn-display');
+    const msgDisplay = document.getElementById('msg-display');
+    const gameLog = document.getElementById('game-log');
+
+    // Create Board Grid HTML
+    function createGrid() {
+        boardGrid.innerHTML = '';
+        const colors = ['#f8f9fa', '#e9ecef', '#dee2e6', '#ced4da'];
+        
+        for (let row = 9; row >= 0; row--) {
+            const isEvenRow = (9 - row) % 2 === 0;
+            for (let col = 0; col < 10; col++) {
+                let colIdx = isEvenRow ? col : (9 - col);
+                let squareNum = row * 10 + colIdx + 1;
+
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `cell-${squareNum}`;
+                cell.style.backgroundColor = colors[(row + col) % colors.length];
+                cell.innerHTML = `<span>${squareNum}</span><div class="player-tokens-container" id="tokens-${squareNum}"></div>`;
+                boardGrid.appendChild(cell);
+            }
+        }
+    }
+
+    // Helper: Get X, Y coordinates of cell center relative to canvas size
+    function getCellCenter(squareNum) {
+        if (squareNum < 1) squareNum = 1;
+        const row = Math.floor((squareNum - 1) / 10);
+        let col = (squareNum - 1) % 10;
+        
+        // Boustrophedon pattern (zigzag pattern for board)
+        if (row % 2 !== 0) {
+            col = 9 - col;
+        }
+
+        const cellWidth = canvas.width / 10;
+        const cellHeight = canvas.height / 10;
+
+        const x = col * cellWidth + cellWidth / 2;
+        const y = canvas.height - (row * cellHeight + cellHeight / 2);
+
+        return { x, y };
+    }
+
+    // Canvas drawing for Snakes and Ladders
+    function drawBoardElements() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Ladders
+        for (let start in ladders) {
+            let end = ladders[start];
+            let p1 = getCellCenter(parseInt(start));
+            let p2 = getCellCenter(end);
+
+            ctx.beginPath();
+            ctx.strokeStyle = "#5c3d2e";
+            ctx.lineWidth = 8;
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+
+            // Inner ladder style
+            ctx.beginPath();
+            ctx.strokeStyle = "#d4a373";
+            ctx.lineWidth = 4;
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+        }
+
+        // Draw Snakes
+        for (let head in snakes) {
+            let tail = snakes[head];
+            let p1 = getCellCenter(parseInt(head));
+            let p2 = getCellCenter(tail);
+
+            ctx.beginPath();
+            ctx.strokeStyle = "#2b9348";
+            ctx.lineWidth = 6;
+            ctx.lineCap = "round";
+            
+            // Curved snake body using control point
+            let controlX = (p1.x + p2.x) / 2 + (p1.x > p2.x ? 30 : -30);
+            let controlY = (p1.y + p2.y) / 2 + 30;
+
+            ctx.moveTo(p1.x, p1.y);
+            ctx.quadraticCurveTo(controlX, controlY, p2.x, p2.y);
+            ctx.stroke();
+
+            // Snake Head
+            ctx.beginPath();
+            ctx.fillStyle = "#55a630";
+            ctx.arc(p1.x, p1.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Render tokens on the board
+    function updateTokens() {
+        // Clear all token elements
+        document.querySelectorAll('.player-tokens-container').forEach(c => c.innerHTML = '');
+
+        players.forEach(player => {
+            if (player.pos > 0) {
+                const container = document.getElementById(`tokens-${player.pos}`);
+                if (container) {
+                    const token = document.createElement('div');
+                    token.className = `token ${player.class}`;
+                    container.appendChild(token);
+                }
+            }
+        });
+    }
+
+    function addLog(text) {
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.textContent = text;
+        gameLog.insertBefore(entry, gameLog.firstChild);
+    }
+
+    // Handle Dice Roll
+    function rollDice() {
+        if (isRolling) return;
+        isRolling = true;
+        rollBtn.disabled = true;
+
+        let rolls = 0;
+        const maxRolls = 10;
+        const interval = setInterval(() => {
+            const randomVal = Math.floor(Math.random() * 6) + 1;
+            diceEl.setAttribute('data-val', randomVal);
+            rolls++;
+
+            if (rolls >= maxRolls) {
+                clearInterval(interval);
+                const finalDiceVal = Math.floor(Math.random() * 6) + 1;
+                diceEl.setAttribute('data-val', finalDiceVal);
+                handleMove(finalDiceVal);
+            }
+        }, 50);
+    }
+
+    // Handle Player Turn Logic
+    function handleMove(diceVal) {
+        const player = players[currentPlayerIdx];
+        msgDisplay.textContent = `${player.name} rolled a ${diceVal}!`;
+
+        let targetPos = player.pos + diceVal;
+
+        if (targetPos > TOTAL_SQUARES) {
+            addLog(`${player.name} rolled a ${diceVal} (Needs exact roll to reach 100).`);
+            finishTurn(false);
+            return;
+        }
+
+        // Animate movement step-by-step
+        let currentStep = player.pos;
+        const stepInterval = setInterval(() => {
+            currentStep++;
+            player.pos = currentStep;
+            updateTokens();
+
+            if (currentStep === targetPos) {
+                clearInterval(stepInterval);
+
+                // Check for Snake or Ladder
+                setTimeout(() => {
+                    if (ladders[player.pos]) {
+                        const newPos = ladders[player.pos];
+                        addLog(`🚀 ${player.name} found a Ladder! Climbed from ${player.pos} to ${newPos}`);
+                        player.pos = newPos;
+                        updateTokens();
+                    } else if (snakes[player.pos]) {
+                        const newPos = snakes[player.pos];
+                        addLog(`🐍 ${player.name} stepped on a Snake! Slid down from ${player.pos} to ${newPos}`);
+                        player.pos = newPos;
+                        updateTokens();
+                    } else {
+                        addLog(`${player.name} moved to square ${player.pos}`);
+                    }
+
+                    // Check Win Condition
+                    if (player.pos === TOTAL_SQUARES) {
+                        msgDisplay.textContent = `🎉 ${player.name} Wins the Game!`;
+                        turnDisplay.textContent = "GAME OVER";
+                        addLog(`🏆 ${player.name} won the game!`);
+                        rollBtn.disabled = true;
+                        return;
+                    }
+
+                    finishTurn(diceVal === 6);
+                }, 300);
+            }
+        }, 200);
+    }
+
+    function finishTurn(gotExtraTurn) {
+        if (gotExtraTurn) {
+            msgDisplay.textContent += " Rolled a 6! Turn again.";
+            addLog(`🎲 ${players[currentPlayerIdx].name} gets an extra roll!`);
+        } else {
+            currentPlayerIdx = (currentPlayerIdx + 1) % players.length;
+        }
+
+        const nextPlayer = players[currentPlayerIdx];
+        turnDisplay.textContent = `${nextPlayer.name}'s Turn`;
+        turnDisplay.style.color = nextPlayer.color;
+
+        isRolling = false;
+        rollBtn.disabled = false;
+    }
+
+    // Reset Game State
+    function resetGame() {
+        players.forEach(p => p.pos = 0);
+        currentPlayerIdx = 0;
+        isRolling = false;
+        rollBtn.disabled = false;
+        diceEl.setAttribute('data-val', 1);
+        turnDisplay.textContent = `${players[0].name}'s Turn`;
+        turnDisplay.style.color = players[0].color;
+        msgDisplay.textContent = "Roll the dice to start!";
+        gameLog.innerHTML = "";
+        addLog("Game restarted.");
+        updateTokens();
+    }
+
+    // Initialization
+    function init() {
+        createGrid();
+        drawBoardElements();
+        updateTokens();
+        
+        rollBtn.addEventListener('click', rollDice);
+        resetBtn.addEventListener('click', resetGame);
+    }
+
+    window.onload = init;
+</script>
 </body>
 </html>
